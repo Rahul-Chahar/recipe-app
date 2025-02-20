@@ -3,18 +3,18 @@ const { Op } = require("sequelize");
 
 exports.getProfile = async (req, res, next) => {
   try {
-    const user = await User.findByPk(req.user.id, {
+    const profile = await User.findByPk(req.user.id, {
       include: [
         { model: Recipe, as: "recipes" },
-        { model: Recipe, as: "favorites", through: { attributes: [] } }
+        { model: Recipe, as: "favorites", through: { attributes: [] } },
+        { model: User, as: "following", attributes: ["id", "username"] }
       ]
     });
-    res.json(user);
+    res.json(profile);
   } catch (error) {
     next(error);
   }
 };
-
 exports.updateProfile = async (req, res, next) => {
   try {
     const { firstName, lastName } = req.body;
@@ -81,29 +81,45 @@ exports.getFavorites = async (req, res, next) => {
 // Follow a user
 exports.followUser = async (req, res, next) => {
   try {
-    const targetUserId = req.params.targetUserId;
+    const targetUserId = parseInt(req.params.targetUserId, 10);
     const currentUserId = req.user.id;
-    if (parseInt(targetUserId) === currentUserId) {
+    if (targetUserId === currentUserId) {
       return res.status(400).json({ message: "You cannot follow yourself." });
     }
     const user = await User.findByPk(currentUserId);
     if (!user) return res.status(404).json({ message: "Current user not found" });
+    
+    // Check if already following
+    const alreadyFollowing = await user.getFollowing({ where: { id: targetUserId } });
+    if (alreadyFollowing.length > 0) {
+      return res.status(400).json({ message: "Already following this user." });
+    }
+    
     await user.addFollowing(targetUserId);
-    res.json({ message: "User followed successfully" });
+    return res.json({ message: "User followed successfully" });
   } catch (error) {
+    // If duplicate entry error, return friendly message
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({ message: "Already following this user." });
+    }
     next(error);
   }
 };
 
-// Unfollow a user
 exports.unfollowUser = async (req, res, next) => {
   try {
-    const targetUserId = req.params.targetUserId;
+    const targetUserId = parseInt(req.params.targetUserId, 10);
     const currentUserId = req.user.id;
     const user = await User.findByPk(currentUserId);
     if (!user) return res.status(404).json({ message: "Current user not found" });
+    
+    // Check if following exists
+    const following = await user.getFollowing({ where: { id: targetUserId } });
+    if (following.length === 0) {
+      return res.status(400).json({ message: "Not following this user." });
+    }
     await user.removeFollowing(targetUserId);
-    res.json({ message: "User unfollowed successfully" });
+    return res.json({ message: "User unfollowed successfully" });
   } catch (error) {
     next(error);
   }

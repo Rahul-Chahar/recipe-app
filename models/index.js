@@ -61,14 +61,14 @@ db.Recipe.belongsToMany(db.User, {
 // Follow: self-referencing many-to-many for Users
 db.User.belongsToMany(db.User, {
   through: db.Follow,
-  as: "following",        // Users that current user follows
-  foreignKey: "followerId", // Current user's ID stored as followerId
+  as: "following",        // Users that the current user is following
+  foreignKey: "followerId", // The current user's ID is stored as followerId
   otherKey: "followingId"
 });
 db.User.belongsToMany(db.User, {
   through: db.Follow,
   as: "followers",        // Users that follow the current user
-  foreignKey: "followingId", // Current user's ID stored as followingId in others
+  foreignKey: "followingId", // The current user's ID is stored as followingId in others
   otherKey: "followerId"
 });
 

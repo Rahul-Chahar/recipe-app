@@ -53,34 +53,56 @@
       async function loadUsers() {
         const token = localStorage.getItem("token");
         try {
-          const res = await fetch("/api/users/all", {
+          // Fetch all users (excluding the current user)
+          const resAll = await fetch("/api/users/all", {
             headers: { Authorization: `Bearer ${token}` }
           });
-          if (!res.ok) {
-            console.error("Error fetching users. Status:", res.status);
+          if (!resAll.ok) {
+            console.error("Error fetching users. Status:", resAll.status);
             return;
           }
-          const data = await res.json();
+          const dataAll = await resAll.json();
+
+          // Fetch current user's profile to get the following list
+          const resProfile = await fetch("/api/users/profile", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (!resProfile.ok) {
+            console.error("Error fetching profile. Status:", resProfile.status);
+            return;
+          }
+          const profile = await resProfile.json();
+          // Convert following IDs to strings for robust comparison
+          const followingIds = (profile.following || []).map(u => String(u.id));
+          console.log("Following IDs:", followingIds);
+
           const usersList = document.getElementById("users-list");
           usersList.innerHTML = "";
-          if (data.users && data.users.length > 0) {
-            data.users.forEach(user => {
+          if (dataAll.users && dataAll.users.length > 0) {
+            dataAll.users.forEach(user => {
+              const userIdStr = String(user.id);
+              const isFollowing = followingIds.includes(userIdStr);
+              const buttonText = isFollowing ? "Unfollow" : "Follow";
+              const buttonColor = isFollowing ? "green" : "blue";
+
               const div = document.createElement("div");
               div.className = "border p-4 rounded flex justify-between items-center";
-              // Create a follow button that starts with "Follow"
-              div.innerHTML = `<span>${user.username}</span>
-                <button class="followBtn px-3 py-1 bg-blue-500 text-white rounded" data-userid="${user.id}">
-                  Follow
-                </button>`;
+              div.innerHTML = `
+                <span>${user.username}</span>
+                <button class="followBtn px-3 py-1 text-white rounded" data-userid="${user.id}" style="background-color: ${buttonColor};" data-following="${isFollowing}">
+                  ${buttonText}
+                </button>
+              `;
               usersList.appendChild(div);
             });
-            // Attach event listeners for each follow button
+            // Attach event listeners for each follow/unfollow button
             document.querySelectorAll(".followBtn").forEach(button => {
               button.addEventListener("click", async () => {
                 const targetUserId = button.getAttribute("data-userid");
                 const token = localStorage.getItem("token");
-                // Toggle based on current button text
-                if (button.innerText.trim() === "Follow") {
+                const currentlyFollowing = button.getAttribute("data-following") === "true";
+                if (!currentlyFollowing) {
+                  // Follow user
                   try {
                     const res = await fetch(`/api/users/${targetUserId}/follow`, {
                       method: "POST",
@@ -93,8 +115,8 @@
                     if (res.ok) {
                       alert("User followed successfully");
                       button.innerText = "Unfollow";
-                      button.classList.remove("bg-blue-500");
-                      button.classList.add("bg-green-500");
+                      button.style.backgroundColor = "green";
+                      button.setAttribute("data-following", "true");
                     } else {
                       alert(result.message || "Failed to follow user");
                     }
@@ -102,7 +124,7 @@
                     console.error("Error following user:", error);
                   }
                 } else {
-                  // Currently "Unfollow", so unfollow user
+                  // Unfollow user
                   try {
                     const res = await fetch(`/api/users/${targetUserId}/unfollow`, {
                       method: "DELETE",
@@ -114,8 +136,8 @@
                     if (res.ok) {
                       alert("User unfollowed successfully");
                       button.innerText = "Follow";
-                      button.classList.remove("bg-green-500");
-                      button.classList.add("bg-blue-500");
+                      button.style.backgroundColor = "blue";
+                      button.setAttribute("data-following", "false");
                     } else {
                       alert(result.message || "Failed to unfollow user");
                     }
