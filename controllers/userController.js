@@ -82,8 +82,12 @@ exports.getFavorites = async (req, res, next) => {
 exports.followUser = async (req, res, next) => {
   try {
     const targetUserId = req.params.targetUserId;
-    const user = await User.findByPk(req.user.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const currentUserId = req.user.id;
+    if (parseInt(targetUserId) === currentUserId) {
+      return res.status(400).json({ message: "You cannot follow yourself." });
+    }
+    const user = await User.findByPk(currentUserId);
+    if (!user) return res.status(404).json({ message: "Current user not found" });
     await user.addFollowing(targetUserId);
     res.json({ message: "User followed successfully" });
   } catch (error) {
@@ -95,8 +99,9 @@ exports.followUser = async (req, res, next) => {
 exports.unfollowUser = async (req, res, next) => {
   try {
     const targetUserId = req.params.targetUserId;
-    const user = await User.findByPk(req.user.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const currentUserId = req.user.id;
+    const user = await User.findByPk(currentUserId);
+    if (!user) return res.status(404).json({ message: "Current user not found" });
     await user.removeFollowing(targetUserId);
     res.json({ message: "User unfollowed successfully" });
   } catch (error) {
@@ -107,9 +112,10 @@ exports.unfollowUser = async (req, res, next) => {
 // Get all users (excluding the current user)
 exports.getAllUsers = async (req, res, next) => {
   try {
+    const currentUserId = req.user.id;
     const users = await User.findAll({
       where: {
-        id: { [Op.ne]: req.user.id }
+        id: { [Op.ne]: currentUserId }
       },
       attributes: ["id", "username"]
     });
@@ -123,18 +129,25 @@ exports.getAllUsers = async (req, res, next) => {
 exports.getActivityFeed = async (req, res, next) => {
   try {
     const currentUserId = req.user.id;
-    // Find current user including the users they follow
+    // Retrieve current user with the users they are following
     const user = await User.findByPk(currentUserId, {
-      include: [{ model: User, as: "following", attributes: ["id", "username"] }]
+      include: [{
+        model: User,
+        as: "following",
+        attributes: ["id", "username"]
+      }]
     });
-    const followedIds = user.following.map(f => f.id);
-    // Get recipes from followed users
+    const followedIds = user.following.map(u => u.id);
+    if (followedIds.length === 0) {
+      return res.json({ feed: [] });
+    }
+    // Get recipes by followed users
     const recipes = await Recipe.findAll({
       where: { userId: followedIds },
       include: [{ model: User, as: "author", attributes: ["id", "username"] }],
       order: [["createdAt", "DESC"]]
     });
-    // Get reviews from followed users
+    // Get reviews by followed users
     const reviews = await Review.findAll({
       where: { userId: followedIds },
       include: [{ model: User, as: "user", attributes: ["id", "username"] }],
@@ -158,7 +171,7 @@ exports.getActivityFeed = async (req, res, next) => {
         createdAt: review.createdAt
       });
     });
-    // Sort feed items by createdAt (newest first)
+    // Sort items by createdAt (newest first)
     feedItems.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     res.json({ feed: feedItems });
   } catch (error) {

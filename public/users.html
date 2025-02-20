@@ -4,10 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Users - RecipeShare</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
-      rel="stylesheet"
-    />
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   </head>
   <body class="bg-gray-100">
     <!-- Navigation -->
@@ -20,7 +17,6 @@
     </div>
 
     <script>
-      // Update navbar based on login status
       function updateNavbar() {
         const token = localStorage.getItem("token");
         const navbar = document.getElementById("navbar");
@@ -64,7 +60,6 @@
             return;
           }
           const data = await res.json();
-          console.log("Fetched users:", data.users);
           const usersList = document.getElementById("users-list");
           usersList.innerHTML = "";
           if (data.users && data.users.length > 0) {
@@ -75,7 +70,6 @@
                 <button class="followBtn px-3 py-1 bg-blue-500 text-white rounded" data-userid="${user.id}">Follow</button>`;
               usersList.appendChild(div);
             });
-            // Attach event listeners for each follow button
             document.querySelectorAll(".followBtn").forEach(button => {
               button.addEventListener("click", async () => {
                 const targetUserId = button.getAttribute("data-userid");
