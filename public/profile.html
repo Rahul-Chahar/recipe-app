@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Profile - RecipeShare</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav id="navbar" class="bg-white shadow mb-6 px-4 py-4"></nav>
+
+    <div class="max-w-7xl mx-auto px-4">
+      <!-- Profile Info -->
+      <div id="profile-info" class="bg-white p-6 rounded shadow mb-6">
+        <!-- User info will be loaded here -->
+      </div>
+
+      <!-- Contributed Recipes -->
+      <div class="bg-white p-6 rounded shadow mb-6">
+        <h2 class="text-2xl font-bold mb-4">My Recipes</h2>
+        <div id="user-recipes" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- User recipes will be loaded here -->
+        </div>
+      </div>
+
+      <!-- Favorite Recipes -->
+      <div class="bg-white p-6 rounded shadow">
+        <h2 class="text-2xl font-bold mb-4">Favorite Recipes</h2>
+        <div id="favorite-recipes" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Favorite recipes will be loaded here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Common Navigation Script -->
+    <script>
+      function updateNavbar() {
+        const token = localStorage.getItem("token");
+        const navbar = document.getElementById("navbar");
+        if (token) {
+          navbar.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+              <a href="index.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
+              <div>
+                <a href="create-recipe.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">New Recipe</a>
+                <a href="collections.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Collections</a>
+                <a href="activity-feed.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Activity</a>
+                <a href="#" id="logoutBtn" class="px-4 py-2 text-gray-700 hover:text-gray-900">Logout</a>
+              </div>
+            </div>
+          `;
+          document.getElementById("logoutBtn").addEventListener("click", () => {
+            localStorage.removeItem("token");
+            window.location.href = "index.html";
+          });
+        } else {
+          window.location.href = "login.html";
+        }
+      }
+      document.addEventListener("DOMContentLoaded", updateNavbar);
+    </script>
+
+    <!-- Profile Management Script -->
+    <script>
+      async function loadProfile() {
+        const token = localStorage.getItem("token");
+        try {
+          const res = await fetch("/api/users/profile", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) {
+            console.error("Failed to load profile. Status:", res.status);
+            document.getElementById("profile-info").innerHTML = "<p>Error loading profile.</p>";
+            return;
+          }
+          const data = await res.json();
+          console.log("Profile data:", data);
+
+          // Display user information
+          const profileInfo = document.getElementById("profile-info");
+          profileInfo.innerHTML = `
+            <h1 class="text-3xl font-bold mb-2">${data.firstName || ""} ${data.lastName || ""}</h1>
+            <p class="text-gray-600 mb-4">${data.email || ""}</p>
+            <button id="editProfileBtn" class="px-4 py-2 bg-green-500 text-white rounded">Edit Profile</button>
+          `;
+          // Redirect to profile-edit.html when "Edit Profile" is clicked
+          document.getElementById("editProfileBtn").addEventListener("click", () => {
+            window.location.href = "profile-edit.html";
+          });
+
+          // Display contributed recipes
+          const userRecipesDiv = document.getElementById("user-recipes");
+          userRecipesDiv.innerHTML = "";
+          if (data.recipes && data.recipes.length > 0) {
+            data.recipes.forEach(recipe => {
+              const card = document.createElement("div");
+              card.className = "border p-4 rounded";
+              card.innerHTML = `<h3 class="font-bold">${recipe.title}</h3>
+                                <a href="recipe-details.html?id=${recipe.id}" class="text-blue-500 underline">View Details</a>`;
+              userRecipesDiv.appendChild(card);
+            });
+          } else {
+            userRecipesDiv.innerHTML = "<p>No recipes contributed yet.</p>";
+          }
+
+          // Display favorite recipes
+          const favRecipesDiv = document.getElementById("favorite-recipes");
+          favRecipesDiv.innerHTML = "";
+          if (data.favorites && data.favorites.length > 0) {
+            data.favorites.forEach(recipe => {
+              const card = document.createElement("div");
+              card.className = "border p-4 rounded";
+              card.innerHTML = `<h3 class="font-bold">${recipe.title}</h3>
+                                <a href="recipe-details.html?id=${recipe.id}" class="text-blue-500 underline">View Details</a>`;
+              favRecipesDiv.appendChild(card);
+            });
+          } else {
+            favRecipesDiv.innerHTML = "<p>No favorite recipes yet.</p>";
+          }
+        } catch (error) {
+          console.error("Error loading profile:", error);
+          document.getElementById("profile-info").innerHTML = "<p>Error loading profile.</p>";
+        }
+      }
+      document.addEventListener("DOMContentLoaded", loadProfile);
+    </script>
+  </body>
+</html>

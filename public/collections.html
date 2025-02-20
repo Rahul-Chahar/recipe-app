@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Collections - RecipeShare</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  </head>
+  <body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav id="navbar" class="bg-white shadow mb-6 px-4 py-4"></nav>
+
+    <div class="max-w-4xl mx-auto px-4">
+      <h2 class="text-2xl font-bold mb-4">My Collections</h2>
+      <div id="collections-list" class="space-y-4 mb-6">
+        <!-- Existing collections will be loaded here -->
+      </div>
+
+      <h3 class="text-xl font-bold mb-2">Create New Collection</h3>
+      <form id="create-collection-form" class="space-y-4 bg-white p-4 rounded shadow mb-6">
+        <input type="text" id="collectionName" placeholder="Collection Name" required class="w-full p-2 border rounded" />
+        <textarea id="collectionDescription" placeholder="Description" class="w-full p-2 border rounded"></textarea>
+        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Create Collection</button>
+      </form>
+    </div>
+
+    <script>
+      // Update navbar dynamically
+      function updateNavbar() {
+        const token = localStorage.getItem("token");
+        const navbar = document.getElementById("navbar");
+        if (token) {
+          navbar.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+              <a href="index.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
+              <div>
+                <a href="profile.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Profile</a>
+                <a href="#" id="logoutBtn" class="px-4 py-2 text-gray-700 hover:text-gray-900">Logout</a>
+              </div>
+            </div>
+          `;
+          document.getElementById("logoutBtn").addEventListener("click", () => {
+            localStorage.removeItem("token");
+            window.location.href = "index.html";
+          });
+        } else {
+          window.location.href = "login.html";
+        }
+      }
+      document.addEventListener("DOMContentLoaded", updateNavbar);
+
+      // Load collections from API
+      async function loadCollections() {
+        const token = localStorage.getItem("token");
+        try {
+          const res = await fetch("/api/collections", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await res.json();
+          const listDiv = document.getElementById("collections-list");
+          listDiv.innerHTML = "";
+          if (data.collections && data.collections.length > 0) {
+            data.collections.forEach(coll => {
+              const div = document.createElement("div");
+              div.className = "bg-white p-4 rounded shadow";
+              div.innerHTML = `
+                <h3 class="font-bold">${coll.name}</h3>
+                <p>${coll.description || ""}</p>
+                <div class="mt-2">
+                  <button class="px-3 py-1 bg-green-500 text-white rounded" onclick="addRecipeToCollection(${coll.id})">Add Recipe</button>
+                </div>
+                <div id="collection-recipes-${coll.id}" class="mt-2">
+                  <!-- List recipes in this collection if available -->
+                </div>
+              `;
+              listDiv.appendChild(div);
+              // Optionally, if the collection object contains recipes, list them:
+              if (coll.recipes && coll.recipes.length > 0) {
+                const recipesDiv = document.getElementById(`collection-recipes-${coll.id}`);
+                coll.recipes.forEach(recipe => {
+                  const rDiv = document.createElement("div");
+                  rDiv.className = "border p-1 rounded mt-1";
+                  rDiv.innerHTML = `<a href="recipe-details.html?id=${recipe.id}" class="text-blue-500 underline">${recipe.title}</a>`;
+                  recipesDiv.appendChild(rDiv);
+                });
+              }
+            });
+          } else {
+            listDiv.innerHTML = "<p>No collections found.</p>";
+          }
+        } catch (error) {
+          console.error("Error loading collections:", error);
+        }
+      }
+
+      // Add recipe to a collection by prompting for recipe ID
+      async function addRecipeToCollection(collectionId) {
+        const token = localStorage.getItem("token");
+        const recipeId = prompt("Enter Recipe ID to add to this collection:");
+        if (!recipeId) return;
+        try {
+          const res = await fetch(`/api/collections/${collectionId}/recipes`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ recipeId })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert("Recipe added to collection!");
+            loadCollections(); // Refresh list
+          } else {
+            alert(data.message);
+          }
+        } catch (error) {
+          console.error("Error adding recipe to collection:", error);
+        }
+      }
+
+      // Handle new collection creation
+      document.getElementById("create-collection-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const token = localStorage.getItem("token");
+        const name = document.getElementById("collectionName").value;
+        const description = document.getElementById("collectionDescription").value;
+        try {
+          const res = await fetch("/api/collections", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ name, description })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert("Collection created!");
+            loadCollections();
+          } else {
+            alert(data.message);
+          }
+        } catch (error) {
+          console.error("Error creating collection:", error);
+        }
+      });
+
+      document.addEventListener("DOMContentLoaded", loadCollections);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recipe Reviews - RecipeShare</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  </head>
+  <body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav id="navbar" class="bg-white shadow mb-6 px-4 py-4"></nav>
+
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
+      <div id="reviews-section">
+        <h1 class="text-3xl font-bold mb-4" id="recipeTitle">Recipe Reviews</h1>
+        <div id="reviews-list" class="space-y-4">
+          <!-- Reviews will be loaded here -->
+        </div>
+      </div>
+      <div class="mt-6">
+        <h2 class="text-2xl font-bold mb-4">Leave a Review</h2>
+        <form id="review-form">
+          <input type="number" id="rating" min="1" max="5" placeholder="Rating (1-5)" required class="p-2 border rounded w-full mb-2" />
+          <textarea id="comment" placeholder="Your review" required class="p-2 border rounded w-full"></textarea>
+          <button type="submit" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded">Submit Review</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      function updateNavbar() {
+        const token = localStorage.getItem('token');
+        const navbar = document.getElementById('navbar');
+        if (token) {
+          navbar.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+              <a href="index.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
+              <div>
+                <a href="profile.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Profile</a>
+                <a href="#" id="logoutBtn" class="px-4 py-2 text-gray-700 hover:text-gray-900">Logout</a>
+              </div>
+            </div>
+          `;
+          document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+          });
+        } else {
+          navbar.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+              <a href="index.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
+              <div>
+                <a href="login.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Login</a>
+                <a href="register.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Register</a>
+              </div>
+            </div>
+          `;
+        }
+      }
+      document.addEventListener('DOMContentLoaded', updateNavbar);
+
+      // Helper to get query parameter
+      function getQueryParam(param) {
+        const params = new URLSearchParams(window.location.search);
+        return params.get(param);
+      }
+      const recipeId = getQueryParam('id');
+      if (!recipeId) {
+        document.getElementById('reviews-section').innerHTML = '<p>No recipe specified.</p>';
+      }
+
+      async function loadReviews() {
+        try {
+          const res = await fetch(`/api/recipes/${recipeId}`);
+          const recipe = await res.json();
+          document.getElementById('recipeTitle').innerText = `Reviews for "${recipe.title}"`;
+          const reviewRes = await fetch(`/api/reviews/${recipeId}`);
+          const reviewData = await reviewRes.json();
+          const reviewsList = document.getElementById('reviews-list');
+          reviewsList.innerHTML = '';
+          reviewData.reviews.forEach(review => {
+            const div = document.createElement('div');
+            div.className = 'border p-2 rounded';
+            div.innerHTML = `<strong>${review.user.username}</strong> - Rating: ${review.rating}<br>${review.comment}`;
+            reviewsList.appendChild(div);
+          });
+        } catch (error) {
+          console.error('Error loading reviews:', error);
+        }
+      }
+
+      document.getElementById('review-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert('You must be logged in to leave a review.');
+          return;
+        }
+        const rating = document.getElementById('rating').value;
+        const comment = document.getElementById('comment').value;
+        try {
+          const res = await fetch(`/api/reviews/${recipeId}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ rating, comment })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert('Review submitted!');
+            loadReviews();
+          } else {
+            alert(data.message);
+          }
+        } catch (error) {
+          console.error('Error submitting review:', error);
+        }
+      });
+
+      document.addEventListener('DOMContentLoaded', loadReviews);
+    </script>
+  </body>
+</html>

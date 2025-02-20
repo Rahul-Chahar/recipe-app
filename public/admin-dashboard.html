@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Dashboard - RecipeShare</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  </head>
+  <body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav id="navbar" class="bg-white shadow mb-6 px-4 py-4"></nav>
+
+    <div class="max-w-7xl mx-auto px-4">
+      <!-- User Management -->
+      <section class="mb-8">
+        <h2 class="text-2xl font-bold mb-4">User Management</h2>
+        <div id="users-list" class="space-y-4">
+          <!-- List of users will be loaded here -->
+        </div>
+      </section>
+
+      <!-- Recipe Management -->
+      <section>
+        <h2 class="text-2xl font-bold mb-4">Recipe Management</h2>
+        <div id="admin-recipes-list" class="space-y-4">
+          <!-- List of recipes will be loaded here -->
+        </div>
+      </section>
+    </div>
+
+    <script>
+      function updateNavbar() {
+        const token = localStorage.getItem('token');
+        const navbar = document.getElementById('navbar');
+        if (token) {
+          navbar.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+              <a href="admin-dashboard.html" class="text-xl font-bold text-gray-800">Admin Dashboard</a>
+              <div>
+                <a href="#" id="logoutBtn" class="px-4 py-2 text-gray-700 hover:text-gray-900">Logout</a>
+              </div>
+            </div>
+          `;
+          document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+          });
+        } else {
+          window.location.href = 'login.html';
+        }
+      }
+      document.addEventListener('DOMContentLoaded', updateNavbar);
+
+      async function loadUsers() {
+        const token = localStorage.getItem('token');
+        try {
+          const res = await fetch('/api/admin/users', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await res.json();
+          const usersDiv = document.getElementById('users-list');
+          usersDiv.innerHTML = '';
+          data.users.forEach(user => {
+            const div = document.createElement('div');
+            div.className = 'border p-2 rounded flex justify-between items-center';
+            div.innerHTML = `<span>${user.username} - ${user.role}</span>
+                             <button class="px-2 py-1 bg-red-500 text-white rounded" onclick="banUser(${user.id})">Ban</button>`;
+            usersDiv.appendChild(div);
+          });
+        } catch (error) {
+          console.error('Error loading users:', error);
+        }
+      }
+
+      async function loadRecipes() {
+        const token = localStorage.getItem('token');
+        try {
+          const res = await fetch('/api/admin/recipes', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await res.json();
+          const recipesDiv = document.getElementById('admin-recipes-list');
+          recipesDiv.innerHTML = '';
+          data.recipes.forEach(recipe => {
+            const div = document.createElement('div');
+            div.className = 'border p-2 rounded flex justify-between items-center';
+            div.innerHTML = `<span>${recipe.title} (by user ${recipe.userId})</span>
+                             <button class="px-2 py-1 bg-red-500 text-white rounded" onclick="deleteRecipe(${recipe.id})">Delete</button>`;
+            recipesDiv.appendChild(div);
+          });
+        } catch (error) {
+          console.error('Error loading recipes:', error);
+        }
+      }
+
+      async function banUser(userId) {
+        if (confirm('Ban this user?')) {
+          const token = localStorage.getItem('token');
+          try {
+            const res = await fetch(`/api/admin/users/${userId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({ status: 'banned' })
+            });
+            const data = await res.json();
+            if (res.ok) {
+              alert('User banned.');
+              loadUsers();
+            } else {
+              alert(data.message);
+            }
+          } catch (error) {
+            console.error('Error banning user:', error);
+          }
+        }
+      }
+
+      async function deleteRecipe(recipeId) {
+        if (confirm('Delete this recipe?')) {
+          const token = localStorage.getItem('token');
+          try {
+            const res = await fetch(`/api/admin/recipes/${recipeId}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok) {
+              alert('Recipe deleted.');
+              loadRecipes();
+            } else {
+              alert(data.message);
+            }
+          } catch (error) {
+            console.error('Error deleting recipe:', error);
+          }
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        loadUsers();
+        loadRecipes();
+      });
+    </script>
+  </body>
+</html>

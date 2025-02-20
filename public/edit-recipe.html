@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Edit Recipe - RecipeShare</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  </head>
+  <body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav id="navbar" class="bg-white shadow mb-6 px-4 py-4"></nav>
+
+    <div class="max-w-3xl mx-auto bg-white p-6 rounded shadow">
+      <h2 class="text-2xl font-bold mb-4">Edit Recipe</h2>
+      <form id="edit-recipe-form" class="space-y-4">
+        <input type="text" id="title" placeholder="Recipe Title" required class="w-full p-2 border rounded" />
+        <textarea id="description" placeholder="Short Description" required class="w-full p-2 border rounded"></textarea>
+        <textarea id="ingredients" placeholder="Ingredients (separate by commas)" required class="w-full p-2 border rounded"></textarea>
+        <textarea id="instructions" placeholder="Cooking Instructions" required class="w-full p-2 border rounded"></textarea>
+        <input type="number" id="cookingTime" placeholder="Cooking Time (minutes)" class="w-full p-2 border rounded" />
+        <input type="number" id="servings" placeholder="Servings" class="w-full p-2 border rounded" />
+        <select id="difficulty" class="w-full p-2 border rounded">
+          <option value="">Select Difficulty</option>
+          <option value="Easy">Easy</option>
+          <option value="Medium">Medium</option>
+          <option value="Hard">Hard</option>
+        </select>
+        <input type="text" id="dietaryPreferences" placeholder="Dietary Preferences" class="w-full p-2 border rounded" />
+        <input type="text" id="imageUrl" placeholder="Image URL (optional)" class="w-full p-2 border rounded" />
+        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Update Recipe</button>
+      </form>
+    </div>
+
+    <script>
+      function updateNavbar() {
+        const token = localStorage.getItem('token');
+        const navbar = document.getElementById('navbar');
+        if (token) {
+          navbar.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+              <a href="profile.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
+              <div>
+                <a href="profile.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Profile</a>
+                <a href="#" id="logoutBtn" class="px-4 py-2 text-gray-700 hover:text-gray-900">Logout</a>
+              </div>
+            </div>
+          `;
+          document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+          });
+        } else {
+          window.location.href = 'login.html';
+        }
+      }
+      document.addEventListener('DOMContentLoaded', updateNavbar);
+
+      // Helper to get query parameter
+      function getQueryParam(param) {
+        const params = new URLSearchParams(window.location.search);
+        return params.get(param);
+      }
+
+      const recipeId = getQueryParam('id');
+      if (!recipeId) {
+        alert('No recipe specified.');
+        window.location.href = 'profile.html';
+      }
+
+      async function loadRecipe() {
+        try {
+          const res = await fetch(`/api/recipes/${recipeId}`);
+          const recipe = await res.json();
+          document.getElementById('title').value = recipe.title;
+          document.getElementById('description').value = recipe.description;
+          document.getElementById('ingredients').value = recipe.ingredients.join(', ');
+          document.getElementById('instructions').value = recipe.instructions;
+          document.getElementById('cookingTime').value = recipe.cookingTime;
+          document.getElementById('servings').value = recipe.servings;
+          document.getElementById('difficulty').value = recipe.difficulty;
+          document.getElementById('dietaryPreferences').value = recipe.dietaryPreferences.join(', ');
+          document.getElementById('imageUrl').value = recipe.imageUrl;
+        } catch (error) {
+          console.error('Error loading recipe:', error);
+        }
+      }
+
+      document.getElementById('edit-recipe-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const updatedRecipe = {
+          title: document.getElementById('title').value,
+          description: document.getElementById('description').value,
+          ingredients: document.getElementById('ingredients').value.split(',').map(i => i.trim()),
+          instructions: document.getElementById('instructions').value,
+          cookingTime: parseInt(document.getElementById('cookingTime').value) || 0,
+          servings: parseInt(document.getElementById('servings').value) || 0,
+          difficulty: document.getElementById('difficulty').value,
+          dietaryPreferences: document.getElementById('dietaryPreferences').value.split(',').map(i => i.trim()),
+          imageUrl: document.getElementById('imageUrl').value
+        };
+
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch(`/api/recipes/${recipeId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(updatedRecipe)
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert('Recipe updated successfully!');
+            window.location.href = `recipe-details.html?id=${recipeId}`;
+          } else {
+            alert(data.message);
+          }
+        } catch (error) {
+          console.error('Error updating recipe:', error);
+        }
+      });
+
+      document.addEventListener('DOMContentLoaded', loadRecipe);
+    </script>
+  </body>
+</html>

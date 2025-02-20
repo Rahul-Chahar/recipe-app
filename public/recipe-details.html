@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recipe Details - RecipeShare</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav id="navbar" class="bg-white shadow mb-6 px-4 py-4"></nav>
+
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
+      <div id="recipe-details">
+        <!-- Full recipe details will be loaded here -->
+      </div>
+      <div class="mt-4">
+        <button id="likeBtn" class="px-4 py-2 bg-pink-500 text-white rounded">
+          Like (<span id="likeCount">0</span>)
+        </button>
+      </div>
+      <div class="mt-4">
+        <!-- Save to Favorites Button -->
+        <button id="favoriteBtn" class="px-4 py-2 bg-yellow-500 text-white rounded">
+          Add to Favorites
+        </button>
+      </div>
+      <div class="mt-6">
+        <a href="recipe-reviews.html?id=" id="reviewLink" class="text-blue-500 hover:underline">
+          View Reviews &amp; Comments
+        </a>
+      </div>
+    </div>
+
+    <script>
+      // Update navigation bar dynamically
+      function updateNavbar() {
+        const token = localStorage.getItem("token");
+        const navbar = document.getElementById("navbar");
+        if (token) {
+          navbar.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+              <a href="index.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
+              <div>
+                <a href="profile.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Profile</a>
+                <a href="#" id="logoutBtn" class="px-4 py-2 text-gray-700 hover:text-gray-900">Logout</a>
+              </div>
+            </div>
+          `;
+          document.getElementById("logoutBtn").addEventListener("click", () => {
+            localStorage.removeItem("token");
+            window.location.href = "index.html";
+          });
+        } else {
+          navbar.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+              <a href="index.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
+              <div>
+                <a href="login.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Login</a>
+                <a href="register.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Register</a>
+              </div>
+            </div>
+          `;
+        }
+      }
+      document.addEventListener("DOMContentLoaded", updateNavbar);
+
+      // Helper function to get query parameter
+      function getQueryParam(param) {
+        const params = new URLSearchParams(window.location.search);
+        return params.get(param);
+      }
+
+      const recipeId = getQueryParam("id");
+      if (!recipeId) {
+        document.getElementById("recipe-details").innerHTML = "<p>No recipe specified.</p>";
+      }
+
+      // Load recipe details
+      async function loadRecipe() {
+        try {
+          const res = await fetch(`/api/recipes/${recipeId}`);
+          const recipe = await res.json();
+          document.getElementById("recipe-details").innerHTML = `
+            <h1 class="text-3xl font-bold">${recipe.title}</h1>
+            <img src="${recipe.imageUrl || 'https://via.placeholder.com/600'}" alt="${recipe.title}" class="w-full h-64 object-cover rounded mt-4">
+            <p class="mt-4">${recipe.description}</p>
+            <h2 class="text-2xl font-bold mt-6">Ingredients</h2>
+            <ul class="list-disc ml-6 mt-2">
+              ${recipe.ingredients.map(ing => `<li>${ing}</li>`).join('')}
+            </ul>
+            <h2 class="text-2xl font-bold mt-6">Instructions</h2>
+            <p class="mt-2">${recipe.instructions}</p>
+          `;
+          // Update the review link with recipe ID
+          document.getElementById("reviewLink").href = `recipe-reviews.html?id=${recipe.id}`;
+        } catch (error) {
+          console.error("Error loading recipe:", error);
+        }
+      }
+
+      // Dummy like functionality
+      let likeCount = 0;
+      document.getElementById("likeBtn").addEventListener("click", () => {
+        likeCount++;
+        document.getElementById("likeCount").innerText = likeCount;
+      });
+
+      // Save to Favorites functionality
+      document.getElementById("favoriteBtn").addEventListener("click", async () => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          alert("You must be logged in to add favorites.");
+          return;
+        }
+        try {
+          const res = await fetch("/api/users/favorites", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ recipeId })
+          });
+          // Check if the response is JSON
+          const data = await res.json();
+          if (res.ok) {
+            alert("Recipe added to favorites!");
+          } else {
+            alert(data.message);
+          }
+        } catch (error) {
+          console.error("Error adding to favorites:", error);
+        }
+      });
+
+      document.addEventListener("DOMContentLoaded", loadRecipe);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RecipeShare - Home</title>
+    <!-- Tailwind CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  </head>
+  <body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav id="navbar" class="bg-white shadow mb-6 px-4 py-4"></nav>
+
+    <!-- Search and Filters -->
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="mb-6 flex flex-col md:flex-row items-center justify-between">
+        <input type="text" id="searchInput" placeholder="Search recipes..." class="w-full md:w-1/2 p-2 border rounded" />
+        <select id="filterDifficulty" class="p-2 border rounded mt-2 md:mt-0">
+          <option value="">All Difficulties</option>
+          <option value="Easy">Easy</option>
+          <option value="Medium">Medium</option>
+          <option value="Hard">Hard</option>
+        </select>
+        <select id="filterDiet" class="p-2 border rounded mt-2 md:mt-0">
+          <option value="">All Diets</option>
+          <option value="vegetarian">Vegetarian</option>
+          <option value="vegan">Vegan</option>
+          <option value="gluten-free">Gluten-Free</option>
+        </select>
+        <button id="searchBtn" class="px-4 py-2 bg-blue-500 text-white rounded mt-2 md:mt-0">Search</button>
+      </div>
+    </div>
+
+    <!-- Recipe List -->
+    <main class="max-w-7xl mx-auto px-4">
+      <div id="recipes-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Recipe cards will be injected here -->
+      </div>
+    </main>
+
+    <!-- Common Navigation Script -->
+    <script>
+      function updateNavbar() {
+        const token = localStorage.getItem('token');
+        const navbar = document.getElementById('navbar');
+        if (token) {
+          navbar.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+              <a href="index.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
+              <div>
+                <a href="profile.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Profile</a>
+                <a href="#" id="logoutBtn" class="px-4 py-2 text-gray-700 hover:text-gray-900">Logout</a>
+              </div>
+            </div>
+          `;
+          document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+          });
+        } else {
+          navbar.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+              <a href="index.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
+              <div>
+                <a href="login.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Login</a>
+                <a href="register.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Register</a>
+              </div>
+            </div>
+          `;
+        }
+      }
+      document.addEventListener('DOMContentLoaded', updateNavbar);
+    </script>
+
+    <!-- Recipe Fetching Script -->
+    <script>
+      async function fetchRecipes(query = {}) {
+        let url = '/api/recipes?';
+        if (query.search) url += `search=${encodeURIComponent(query.search)}&`;
+        if (query.difficulty) url += `difficulty=${encodeURIComponent(query.difficulty)}&`;
+        if (query.diet) url += `diet=${encodeURIComponent(query.diet)}&`;
+
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          const recipesList = document.getElementById('recipes-list');
+          recipesList.innerHTML = '';
+
+          data.recipes.forEach(recipe => {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded shadow p-4';
+            card.innerHTML = `
+              <img src="${recipe.imageUrl || 'https://via.placeholder.com/300'}" alt="${recipe.title}" class="w-full h-40 object-cover rounded">
+              <h2 class="mt-4 text-xl font-semibold">${recipe.title}</h2>
+              <p class="mt-2 text-gray-600">${recipe.description ? recipe.description.substring(0, 100) + '...' : ''}</p>
+              <div class="mt-4">
+                <a href="recipe-details.html?id=${recipe.id}" class="inline-block text-blue-500 hover:underline mr-2">View Details</a>
+                <a href="recipe-reviews.html?id=${recipe.id}" class="inline-block text-blue-500 hover:underline">Reviews</a>
+              </div>
+            `;
+            recipesList.appendChild(card);
+          });
+        } catch (error) {
+          console.error('Error fetching recipes:', error);
+        }
+      }
+
+      document.getElementById('searchBtn').addEventListener('click', () => {
+        const search = document.getElementById('searchInput').value;
+        const difficulty = document.getElementById('filterDifficulty').value;
+        const diet = document.getElementById('filterDiet').value;
+        fetchRecipes({ search, difficulty, diet });
+      });
+
+      document.addEventListener('DOMContentLoaded', () => fetchRecipes());
+    </script>
+  </body>
+</html>
