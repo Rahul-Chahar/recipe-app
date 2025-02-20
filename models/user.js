@@ -23,6 +23,10 @@ module.exports = (sequelize, DataTypes) => {
       role: {
         type: DataTypes.STRING,
         defaultValue: "user"
+      },
+      status: {
+        type: DataTypes.STRING,
+        defaultValue: "active"
       }
     },
     {
@@ -34,6 +38,7 @@ module.exports = (sequelize, DataTypes) => {
     }
   );
 
+  // Add an instance method to validate passwords
   User.prototype.validatePassword = function (password) {
     return bcrypt.compare(password, this.password);
   };

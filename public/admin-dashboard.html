@@ -9,29 +9,31 @@
   <body class="bg-gray-100">
     <!-- Navigation -->
     <nav id="navbar" class="bg-white shadow mb-6 px-4 py-4"></nav>
-
     <div class="max-w-7xl mx-auto px-4">
-      <!-- User Management -->
-      <section class="mb-8">
+      <h1 class="text-3xl font-bold mb-6">Admin Dashboard</h1>
+      
+      <!-- User Management Section -->
+      <section>
         <h2 class="text-2xl font-bold mb-4">User Management</h2>
-        <div id="users-list" class="space-y-4">
-          <!-- List of users will be loaded here -->
+        <div id="admin-users" class="space-y-4">
+          <!-- Users list will be rendered here -->
         </div>
       </section>
-
-      <!-- Recipe Management -->
-      <section>
+      
+      <!-- Recipe Management Section -->
+      <section class="mt-10">
         <h2 class="text-2xl font-bold mb-4">Recipe Management</h2>
-        <div id="admin-recipes-list" class="space-y-4">
-          <!-- List of recipes will be loaded here -->
+        <div id="admin-recipes" class="space-y-4">
+          <!-- Recipes list will be rendered here -->
         </div>
       </section>
     </div>
 
     <script>
-      function updateNavbar() {
-        const token = localStorage.getItem('token');
-        const navbar = document.getElementById('navbar');
+      // Update navbar for admin users
+      async function updateNavbar() {
+        const token = localStorage.getItem("token");
+        const navbar = document.getElementById("navbar");
         if (token) {
           navbar.innerHTML = `
             <div class="flex justify-between items-center w-full">
@@ -41,107 +43,141 @@
               </div>
             </div>
           `;
-          document.getElementById('logoutBtn').addEventListener('click', () => {
-            localStorage.removeItem('token');
-            window.location.href = 'index.html';
+          document.getElementById("logoutBtn").addEventListener("click", () => {
+            localStorage.removeItem("token");
+            window.location.href = "index.html";
           });
         } else {
-          window.location.href = 'login.html';
+          window.location.href = "login.html";
         }
       }
-      document.addEventListener('DOMContentLoaded', updateNavbar);
+      document.addEventListener("DOMContentLoaded", updateNavbar);
 
-      async function loadUsers() {
-        const token = localStorage.getItem('token');
+      // Load all users for admin management
+      async function loadAdminUsers() {
+        const token = localStorage.getItem("token");
         try {
-          const res = await fetch('/api/admin/users', {
+          const res = await fetch("/api/admin/users", {
             headers: { Authorization: `Bearer ${token}` }
           });
+          if (!res.ok) {
+            console.error("Error fetching users. Status:", res.status);
+            return;
+          }
           const data = await res.json();
-          const usersDiv = document.getElementById('users-list');
-          usersDiv.innerHTML = '';
-          data.users.forEach(user => {
-            const div = document.createElement('div');
-            div.className = 'border p-2 rounded flex justify-between items-center';
-            div.innerHTML = `<span>${user.username} - ${user.role}</span>
-                             <button class="px-2 py-1 bg-red-500 text-white rounded" onclick="banUser(${user.id})">Ban</button>`;
-            usersDiv.appendChild(div);
-          });
+          const usersDiv = document.getElementById("admin-users");
+          usersDiv.innerHTML = "";
+          if (data.users && data.users.length > 0) {
+            data.users.forEach(user => {
+              // Assume user.status is either "active" or "banned"
+              const statusText = user.status || "active";
+              // If user is active, action is to "Ban"; if banned, action is to "Approve"
+              const actionText = statusText === "banned" ? "Approve" : "Ban";
+              const actionColor = statusText === "banned" ? "green" : "red";
+              const userDiv = document.createElement("div");
+              userDiv.className = "border p-4 rounded flex justify-between items-center";
+              userDiv.innerHTML = `
+                <span>${user.username} (${user.email}) - Status: <strong>${statusText}</strong></span>
+                <button data-userid="${user.id}" class="toggleStatusBtn px-3 py-1 text-white rounded" style="background-color: ${actionColor};">
+                  ${actionText}
+                </button>
+              `;
+              usersDiv.appendChild(userDiv);
+            });
+            // Attach event listeners to each toggleStatusBtn
+            document.querySelectorAll(".toggleStatusBtn").forEach(btn => {
+              btn.addEventListener("click", async () => {
+                const userId = btn.getAttribute("data-userid");
+                const token = localStorage.getItem("token");
+                try {
+                  // Use the updated endpoint with /ban
+                  const res = await fetch(`/api/admin/users/${userId}/ban`, {
+                    method: "PUT",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${token}`
+                    }
+                  });
+                  const result = await res.json();
+                  if (res.ok) {
+                    alert(result.message);
+                    // Reload the users list to reflect changes
+                    loadAdminUsers();
+                  } else {
+                    alert(result.message || "Failed to update user status");
+                  }
+                } catch (error) {
+                  console.error("Error updating user status:", error);
+                }
+              });
+            });
+          } else {
+            usersDiv.innerHTML = "<p>No users found.</p>";
+          }
         } catch (error) {
-          console.error('Error loading users:', error);
+          console.error("Error loading users:", error);
         }
       }
 
-      async function loadRecipes() {
-        const token = localStorage.getItem('token');
+      // Load all recipes for admin management
+      async function loadAdminRecipes() {
+        const token = localStorage.getItem("token");
         try {
-          const res = await fetch('/api/admin/recipes', {
+          const res = await fetch("/api/admin/recipes", {
             headers: { Authorization: `Bearer ${token}` }
           });
+          if (!res.ok) {
+            console.error("Error fetching recipes. Status:", res.status);
+            return;
+          }
           const data = await res.json();
-          const recipesDiv = document.getElementById('admin-recipes-list');
-          recipesDiv.innerHTML = '';
-          data.recipes.forEach(recipe => {
-            const div = document.createElement('div');
-            div.className = 'border p-2 rounded flex justify-between items-center';
-            div.innerHTML = `<span>${recipe.title} (by user ${recipe.userId})</span>
-                             <button class="px-2 py-1 bg-red-500 text-white rounded" onclick="deleteRecipe(${recipe.id})">Delete</button>`;
-            recipesDiv.appendChild(div);
-          });
+          const recipesDiv = document.getElementById("admin-recipes");
+          recipesDiv.innerHTML = "";
+          if (data.recipes && data.recipes.length > 0) {
+            data.recipes.forEach(recipe => {
+              const recipeDiv = document.createElement("div");
+              recipeDiv.className = "border p-4 rounded flex justify-between items-center";
+              recipeDiv.innerHTML = `
+                <span>${recipe.title} (by user ${recipe.userId})</span>
+                <button data-recipeid="${recipe.id}" class="deleteRecipeBtn px-3 py-1 bg-red-500 text-white rounded">
+                  Delete
+                </button>
+              `;
+              recipesDiv.appendChild(recipeDiv);
+            });
+            document.querySelectorAll(".deleteRecipeBtn").forEach(btn => {
+              btn.addEventListener("click", async () => {
+                const recipeId = btn.getAttribute("data-recipeid");
+                if (confirm("Are you sure you want to delete this recipe?")) {
+                  try {
+                    const res = await fetch(`/api/admin/recipes/${recipeId}`, {
+                      method: "DELETE",
+                      headers: { Authorization: `Bearer ${token}` }
+                    });
+                    const result = await res.json();
+                    if (res.ok) {
+                      alert("Recipe deleted successfully");
+                      loadAdminRecipes();
+                    } else {
+                      alert(result.message || "Failed to delete recipe");
+                    }
+                  } catch (error) {
+                    console.error("Error deleting recipe:", error);
+                  }
+                }
+              });
+            });
+          } else {
+            recipesDiv.innerHTML = "<p>No recipes found.</p>";
+          }
         } catch (error) {
-          console.error('Error loading recipes:', error);
+          console.error("Error loading recipes:", error);
         }
       }
 
-      async function banUser(userId) {
-        if (confirm('Ban this user?')) {
-          const token = localStorage.getItem('token');
-          try {
-            const res = await fetch(`/api/admin/users/${userId}`, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`
-              },
-              body: JSON.stringify({ status: 'banned' })
-            });
-            const data = await res.json();
-            if (res.ok) {
-              alert('User banned.');
-              loadUsers();
-            } else {
-              alert(data.message);
-            }
-          } catch (error) {
-            console.error('Error banning user:', error);
-          }
-        }
-      }
-
-      async function deleteRecipe(recipeId) {
-        if (confirm('Delete this recipe?')) {
-          const token = localStorage.getItem('token');
-          try {
-            const res = await fetch(`/api/admin/recipes/${recipeId}`, {
-              method: 'DELETE',
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (res.ok) {
-              alert('Recipe deleted.');
-              loadRecipes();
-            } else {
-              alert(data.message);
-            }
-          } catch (error) {
-            console.error('Error deleting recipe:', error);
-          }
-        }
-      }
-
-      document.addEventListener('DOMContentLoaded', () => {
-        loadUsers();
-        loadRecipes();
+      document.addEventListener("DOMContentLoaded", () => {
+        loadAdminUsers();
+        loadAdminRecipes();
       });
     </script>
   </body>

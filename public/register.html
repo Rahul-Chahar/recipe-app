@@ -34,6 +34,10 @@
             <label for="lastName" class="block text-gray-700">Last Name</label>
             <input type="text" id="lastName" name="lastName" required class="w-full px-3 py-2 border rounded" />
           </div>
+          <div>
+            <label for="adminCode" class="block text-gray-700">Admin Code (optional)</label>
+            <input type="text" id="adminCode" name="adminCode" class="w-full px-3 py-2 border rounded" />
+          </div>
           <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Register</button>
         </form>
         <p class="mt-4 text-center">
@@ -44,6 +48,7 @@
     </div>
 
     <script>
+      // Update navbar based on login status
       function updateNavbar() {
         const token = localStorage.getItem('token');
         const navbar = document.getElementById('navbar');
@@ -75,6 +80,7 @@
       }
       document.addEventListener('DOMContentLoaded', updateNavbar);
 
+      // Handle registration form submission
       document.getElementById('register-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = document.getElementById('username').value;
@@ -82,12 +88,13 @@
         const password = document.getElementById('password').value;
         const firstName = document.getElementById('firstName').value;
         const lastName = document.getElementById('lastName').value;
+        const adminCode = document.getElementById('adminCode').value; // Optional admin code
 
         try {
           const res = await fetch('/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password, firstName, lastName }),
+            body: JSON.stringify({ username, email, password, firstName, lastName, adminCode })
           });
           const data = await res.json();
           if (res.ok) {
