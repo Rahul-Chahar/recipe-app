@@ -30,6 +30,24 @@
     </div>
 
     <script>
+
+async function fetchWithAuth(url, options = {}) {
+  const token = localStorage.getItem('token');
+  options.headers = { 
+    ...options.headers, 
+    Authorization: `Bearer ${token}` 
+  };
+  const res = await fetch(url, options);
+  if (res.status === 403) {
+    alert("Your account has been banned. You will be logged out.");
+    localStorage.removeItem('token');
+    window.location.href = 'login.html';
+    throw new Error("User banned");
+  }
+  return res;
+}
+
+
       // Update navbar for admin users
       async function updateNavbar() {
         const token = localStorage.getItem("token");
