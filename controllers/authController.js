@@ -35,21 +35,15 @@ exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ where: { email } });
-
     if (!user || !(await user.validatePassword(password))) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-
-    // ✅ Check if user is banned
     if (user.status === "banned") {
-      return res.status(403).json({ message: "Your account has been banned. Contact support." });
+      return res.status(403).json({ message: "Your account has been banned." });
     }
-
-    // ✅ Generate JWT Token
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
       expiresIn: "1d"
     });
-
     res.json({
       message: "Login successful",
       token,
@@ -64,3 +58,4 @@ exports.login = async (req, res, next) => {
     next(error);
   }
 };
+

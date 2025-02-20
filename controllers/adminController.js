@@ -4,7 +4,7 @@ const { User, Recipe } = require("../models");
 exports.getAllUsers = async (req, res, next) => {
   try {
     const users = await User.findAll({
-      attributes: ["id", "username", "email", "role", "createdAt"],
+      attributes: ["id", "username", "email", "role", "status", "createdAt"],
       order: [["createdAt", "DESC"]]
     });
     res.json({ users });
@@ -19,16 +19,20 @@ exports.toggleUserBan = async (req, res, next) => {
     const userId = parseInt(req.params.userId, 10);
     const user = await User.findByPk(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
-    // Toggle status: if active, set to banned; if banned, set to active
+
+    // Toggle status: if active then ban; if banned then approve (set to active)
     user.status = user.status === "banned" ? "active" : "banned";
     await user.save();
-    res.json({ message: `User ${user.status === "banned" ? "banned" : "approved"} successfully`, status: user.status });
+
+    res.json({
+      message: `User ${user.status === "banned" ? "banned" : "approved"} successfully`,
+      status: user.status
+    });
   } catch (error) {
     console.error("Error toggling user ban:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 exports.getAllRecipes = async (req, res, next) => {
   try {

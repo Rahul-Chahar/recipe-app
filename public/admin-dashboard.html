@@ -69,9 +69,8 @@
           usersDiv.innerHTML = "";
           if (data.users && data.users.length > 0) {
             data.users.forEach(user => {
-              // Assume user.status is either "active" or "banned"
+              // Determine the current status (active or banned)
               const statusText = user.status || "active";
-              // If user is active, action is to "Ban"; if banned, action is to "Approve"
               const actionText = statusText === "banned" ? "Approve" : "Ban";
               const actionColor = statusText === "banned" ? "green" : "red";
               const userDiv = document.createElement("div");
@@ -84,13 +83,12 @@
               `;
               usersDiv.appendChild(userDiv);
             });
-            // Attach event listeners to each toggleStatusBtn
+            // Attach event listeners to toggle status buttons
             document.querySelectorAll(".toggleStatusBtn").forEach(btn => {
               btn.addEventListener("click", async () => {
                 const userId = btn.getAttribute("data-userid");
                 const token = localStorage.getItem("token");
                 try {
-                  // Use the updated endpoint with /ban
                   const res = await fetch(`/api/admin/users/${userId}/ban`, {
                     method: "PUT",
                     headers: {
@@ -101,7 +99,7 @@
                   const result = await res.json();
                   if (res.ok) {
                     alert(result.message);
-                    // Reload the users list to reflect changes
+                    // Reload the users list after updating status
                     loadAdminUsers();
                   } else {
                     alert(result.message || "Failed to update user status");
@@ -118,7 +116,6 @@
           console.error("Error loading users:", error);
         }
       }
-
       // Load all recipes for admin management
       async function loadAdminRecipes() {
         const token = localStorage.getItem("token");
