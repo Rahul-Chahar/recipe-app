@@ -1,4 +1,5 @@
-const { User, Recipe } = require("../models");
+const { User, Recipe, Review } = require("../models");
+const { Op } = require("sequelize");
 
 exports.getProfile = async (req, res, next) => {
   try {
@@ -31,7 +32,13 @@ exports.addFavorite = async (req, res, next) => {
     const { recipeId } = req.body;
     const user = await User.findByPk(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
-    // Using the Sequelize association method
+
+    // Check if the recipe is already favorited
+    const existingFavorites = await user.getFavorites({ where: { id: recipeId } });
+    if (existingFavorites.length > 0) {
+      return res.status(400).json({ message: "Recipe already favorited" });
+    }
+
     await user.addFavorite(recipeId);
     res.json({ message: "Recipe added to favorites" });
   } catch (error) {
@@ -39,17 +46,31 @@ exports.addFavorite = async (req, res, next) => {
   }
 };
 
-// Get Favorites (if needed)
+exports.removeFavorite = async (req, res, next) => {
+  try {
+    const { recipeId } = req.params;
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Check if the recipe is in favorites
+    const existingFavorites = await user.getFavorites({ where: { id: recipeId } });
+    if (existingFavorites.length === 0) {
+      return res.status(400).json({ message: "Recipe not in favorites" });
+    }
+
+    await user.removeFavorite(recipeId);
+    res.json({ message: "Recipe removed from favorites" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getFavorites = async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id, {
       include: [
-        {
-          model: Recipe,
-          as: "favorites",
-          through: { attributes: [] },
-        },
-      ],
+        { model: require("../models").Recipe, as: "favorites", through: { attributes: [] } }
+      ]
     });
     res.json({ favorites: user.favorites });
   } catch (error) {
@@ -57,14 +78,89 @@ exports.getFavorites = async (req, res, next) => {
   }
 };
 
-// Remove Favorite (if needed)
-exports.removeFavorite = async (req, res, next) => {
+// Follow a user
+exports.followUser = async (req, res, next) => {
   try {
-    const { recipeId } = req.params;
+    const targetUserId = req.params.targetUserId;
     const user = await User.findByPk(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
-    await user.removeFavorite(recipeId);
-    res.json({ message: "Recipe removed from favorites" });
+    await user.addFollowing(targetUserId);
+    res.json({ message: "User followed successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Unfollow a user
+exports.unfollowUser = async (req, res, next) => {
+  try {
+    const targetUserId = req.params.targetUserId;
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    await user.removeFollowing(targetUserId);
+    res.json({ message: "User unfollowed successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get all users (excluding the current user)
+exports.getAllUsers = async (req, res, next) => {
+  try {
+    const users = await User.findAll({
+      where: {
+        id: { [Op.ne]: req.user.id }
+      },
+      attributes: ["id", "username"]
+    });
+    res.json({ users });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get activity feed: combine recipes and reviews from followed users
+exports.getActivityFeed = async (req, res, next) => {
+  try {
+    const currentUserId = req.user.id;
+    // Find current user including the users they follow
+    const user = await User.findByPk(currentUserId, {
+      include: [{ model: User, as: "following", attributes: ["id", "username"] }]
+    });
+    const followedIds = user.following.map(f => f.id);
+    // Get recipes from followed users
+    const recipes = await Recipe.findAll({
+      where: { userId: followedIds },
+      include: [{ model: User, as: "author", attributes: ["id", "username"] }],
+      order: [["createdAt", "DESC"]]
+    });
+    // Get reviews from followed users
+    const reviews = await Review.findAll({
+      where: { userId: followedIds },
+      include: [{ model: User, as: "user", attributes: ["id", "username"] }],
+      order: [["createdAt", "DESC"]]
+    });
+    // Combine feed items
+    const feedItems = [];
+    recipes.forEach(recipe => {
+      feedItems.push({
+        type: "recipe",
+        user: recipe.author,
+        data: recipe,
+        createdAt: recipe.createdAt
+      });
+    });
+    reviews.forEach(review => {
+      feedItems.push({
+        type: "review",
+        user: review.user,
+        data: review,
+        createdAt: review.createdAt
+      });
+    });
+    // Sort feed items by createdAt (newest first)
+    feedItems.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json({ feed: feedItems });
   } catch (error) {
     next(error);
   }

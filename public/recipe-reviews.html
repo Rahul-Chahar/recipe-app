@@ -11,26 +11,30 @@
     <nav id="navbar" class="bg-white shadow mb-6 px-4 py-4"></nav>
 
     <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
-      <div id="reviews-section">
-        <h1 class="text-3xl font-bold mb-4" id="recipeTitle">Recipe Reviews</h1>
-        <div id="reviews-list" class="space-y-4">
-          <!-- Reviews will be loaded here -->
+      <h1 id="recipeTitle" class="text-3xl font-bold mb-4">Reviews</h1>
+      <div id="reviews-list" class="space-y-4">
+        <!-- Reviews will be loaded here -->
+      </div>
+
+      <h2 class="text-2xl font-bold mt-6 mb-4">Leave a Review</h2>
+      <form id="review-form" class="space-y-4">
+        <div>
+          <label for="rating" class="block text-gray-700">Rating (1-5):</label>
+          <input type="number" id="rating" min="1" max="5" required class="w-full p-2 border rounded">
         </div>
-      </div>
-      <div class="mt-6">
-        <h2 class="text-2xl font-bold mb-4">Leave a Review</h2>
-        <form id="review-form">
-          <input type="number" id="rating" min="1" max="5" placeholder="Rating (1-5)" required class="p-2 border rounded w-full mb-2" />
-          <textarea id="comment" placeholder="Your review" required class="p-2 border rounded w-full"></textarea>
-          <button type="submit" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded">Submit Review</button>
-        </form>
-      </div>
+        <div>
+          <label for="comment" class="block text-gray-700">Comment:</label>
+          <textarea id="comment" required class="w-full p-2 border rounded"></textarea>
+        </div>
+        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Submit Review</button>
+      </form>
     </div>
 
     <script>
+      // Update navigation bar based on login status
       function updateNavbar() {
-        const token = localStorage.getItem('token');
-        const navbar = document.getElementById('navbar');
+        const token = localStorage.getItem("token");
+        const navbar = document.getElementById("navbar");
         if (token) {
           navbar.innerHTML = `
             <div class="flex justify-between items-center w-full">
@@ -41,9 +45,9 @@
               </div>
             </div>
           `;
-          document.getElementById('logoutBtn').addEventListener('click', () => {
-            localStorage.removeItem('token');
-            window.location.href = 'index.html';
+          document.getElementById("logoutBtn").addEventListener("click", () => {
+            localStorage.removeItem("token");
+            window.location.href = "index.html";
           });
         } else {
           navbar.innerHTML = `
@@ -57,69 +61,89 @@
           `;
         }
       }
-      document.addEventListener('DOMContentLoaded', updateNavbar);
+      document.addEventListener("DOMContentLoaded", updateNavbar);
 
-      // Helper to get query parameter
+      // Helper to get query parameter from URL
       function getQueryParam(param) {
         const params = new URLSearchParams(window.location.search);
         return params.get(param);
       }
-      const recipeId = getQueryParam('id');
+      const recipeId = getQueryParam("id");
       if (!recipeId) {
-        document.getElementById('reviews-section').innerHTML = '<p>No recipe specified.</p>';
+        document.getElementById("reviews-list").innerHTML = "<p>No recipe specified.</p>";
       }
 
-      async function loadReviews() {
+      // Load recipe details to display the recipe title in the reviews page
+      async function loadRecipeDetails() {
         try {
           const res = await fetch(`/api/recipes/${recipeId}`);
           const recipe = await res.json();
-          document.getElementById('recipeTitle').innerText = `Reviews for "${recipe.title}"`;
-          const reviewRes = await fetch(`/api/reviews/${recipeId}`);
-          const reviewData = await reviewRes.json();
-          const reviewsList = document.getElementById('reviews-list');
-          reviewsList.innerHTML = '';
-          reviewData.reviews.forEach(review => {
-            const div = document.createElement('div');
-            div.className = 'border p-2 rounded';
-            div.innerHTML = `<strong>${review.user.username}</strong> - Rating: ${review.rating}<br>${review.comment}`;
-            reviewsList.appendChild(div);
-          });
+          document.getElementById("recipeTitle").innerText = `Reviews for "${recipe.title}"`;
         } catch (error) {
-          console.error('Error loading reviews:', error);
+          console.error("Error loading recipe details:", error);
         }
       }
 
-      document.getElementById('review-form').addEventListener('submit', async (e) => {
+      // Load reviews for the recipe
+      async function loadReviews() {
+        try {
+          const res = await fetch(`/api/reviews/${recipeId}`);
+          const data = await res.json();
+          const reviewsList = document.getElementById("reviews-list");
+          reviewsList.innerHTML = "";
+          if (data.reviews && data.reviews.length > 0) {
+            data.reviews.forEach(review => {
+              const username = review.user && review.user.username ? review.user.username : "Anonymous";
+              const div = document.createElement("div");
+              div.className = "border p-2 rounded";
+              div.innerHTML = `<strong>${username}</strong> - Rating: ${review.rating}<br>${review.comment}`;
+              reviewsList.appendChild(div);
+            });
+          } else {
+            reviewsList.innerHTML = "<p>No reviews yet. Be the first to review this recipe!</p>";
+          }
+        } catch (error) {
+          console.error("Error loading reviews:", error);
+        }
+      }
+
+      // Handle review submission
+      document.getElementById("review-form").addEventListener("submit", async (e) => {
         e.preventDefault();
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem("token");
         if (!token) {
-          alert('You must be logged in to leave a review.');
+          alert("You must be logged in to leave a review.");
           return;
         }
-        const rating = document.getElementById('rating').value;
-        const comment = document.getElementById('comment').value;
+        const rating = document.getElementById("rating").value;
+        const comment = document.getElementById("comment").value;
         try {
           const res = await fetch(`/api/reviews/${recipeId}`, {
-            method: 'POST',
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
               Authorization: `Bearer ${token}`
             },
             body: JSON.stringify({ rating, comment })
           });
           const data = await res.json();
           if (res.ok) {
-            alert('Review submitted!');
+            alert("Review submitted!");
+            document.getElementById("rating").value = "";
+            document.getElementById("comment").value = "";
             loadReviews();
           } else {
             alert(data.message);
           }
         } catch (error) {
-          console.error('Error submitting review:', error);
+          console.error("Error submitting review:", error);
         }
       });
 
-      document.addEventListener('DOMContentLoaded', loadReviews);
+      document.addEventListener("DOMContentLoaded", () => {
+        loadRecipeDetails();
+        loadReviews();
+      });
     </script>
   </body>
 </html>

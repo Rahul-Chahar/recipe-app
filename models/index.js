@@ -44,6 +44,20 @@ db.Recipe.belongsToMany(db.User, {
   foreignKey: "recipeId"
 });
 
+// Like association
+db.User.belongsToMany(db.Recipe, {
+  through: db.Like,
+  as: "likedRecipes",
+  foreignKey: "userId",    // Must match the field in Like model
+  otherKey: "recipeId"
+});
+db.Recipe.belongsToMany(db.User, {
+  through: db.Like,
+  as: "likedBy",
+  foreignKey: "recipeId",  // Must match the field in Like model
+  otherKey: "userId"
+});
+
 // Follow: self-referencing many-to-many for Users
 db.User.belongsToMany(db.User, {
   through: db.Follow,

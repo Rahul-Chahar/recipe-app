@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Users - RecipeShare</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav id="navbar" class="bg-white shadow mb-6 px-4 py-4"></nav>
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
+      <h1 class="text-3xl font-bold mb-4">All Users</h1>
+      <div id="users-list" class="space-y-4">
+        <!-- Users will be loaded here -->
+      </div>
+    </div>
+
+    <script>
+      // Update navbar based on login status
+      function updateNavbar() {
+        const token = localStorage.getItem("token");
+        const navbar = document.getElementById("navbar");
+        if (token) {
+          navbar.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+              <a href="index.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
+              <div>
+                <a href="profile.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Profile</a>
+                <a href="activity-feed.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Activity Feed</a>
+                <a href="#" id="logoutBtn" class="px-4 py-2 text-gray-700 hover:text-gray-900">Logout</a>
+              </div>
+            </div>
+          `;
+          document.getElementById("logoutBtn").addEventListener("click", () => {
+            localStorage.removeItem("token");
+            window.location.href = "index.html";
+          });
+        } else {
+          navbar.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+              <a href="index.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
+              <div>
+                <a href="login.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Login</a>
+                <a href="register.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Register</a>
+              </div>
+            </div>
+          `;
+        }
+      }
+      document.addEventListener("DOMContentLoaded", updateNavbar);
+
+      async function loadUsers() {
+        const token = localStorage.getItem("token");
+        try {
+          const res = await fetch("/api/users/all", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (!res.ok) {
+            console.error("Error fetching users. Status:", res.status);
+            return;
+          }
+          const data = await res.json();
+          console.log("Fetched users:", data.users);
+          const usersList = document.getElementById("users-list");
+          usersList.innerHTML = "";
+          if (data.users && data.users.length > 0) {
+            data.users.forEach(user => {
+              const div = document.createElement("div");
+              div.className = "border p-4 rounded flex justify-between items-center";
+              div.innerHTML = `<span>${user.username}</span>
+                <button class="followBtn px-3 py-1 bg-blue-500 text-white rounded" data-userid="${user.id}">Follow</button>`;
+              usersList.appendChild(div);
+            });
+            // Attach event listeners for each follow button
+            document.querySelectorAll(".followBtn").forEach(button => {
+              button.addEventListener("click", async () => {
+                const targetUserId = button.getAttribute("data-userid");
+                try {
+                  const res = await fetch(`/api/users/${targetUserId}/follow`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${token}`
+                    }
+                  });
+                  const result = await res.json();
+                  if (res.ok) {
+                    alert("User followed successfully");
+                    button.innerText = "Following";
+                    button.disabled = true;
+                  } else {
+                    alert(result.message || "Failed to follow user");
+                  }
+                } catch (error) {
+                  console.error("Error following user:", error);
+                }
+              });
+            });
+          } else {
+            usersList.innerHTML = "<p>No users found.</p>";
+          }
+        } catch (error) {
+          console.error("Error loading users:", error);
+        }
+      }
+      document.addEventListener("DOMContentLoaded", loadUsers);
+    </script>
+  </body>
+</html>

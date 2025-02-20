@@ -4,10 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Recipe Details - RecipeShare</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
-      rel="stylesheet"
-    />
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   </head>
   <body class="bg-gray-100">
     <!-- Navigation -->
@@ -18,14 +15,15 @@
         <!-- Full recipe details will be loaded here -->
       </div>
       <div class="mt-4">
+        <!-- Like Button -->
         <button id="likeBtn" class="px-4 py-2 bg-pink-500 text-white rounded">
-          Like (<span id="likeCount">0</span>)
+          Loading...
         </button>
       </div>
       <div class="mt-4">
-        <!-- Save to Favorites Button -->
+        <!-- Toggle Favorites Button (existing functionality) -->
         <button id="favoriteBtn" class="px-4 py-2 bg-yellow-500 text-white rounded">
-          Add to Favorites
+          Loading...
         </button>
       </div>
       <div class="mt-6">
@@ -36,7 +34,7 @@
     </div>
 
     <script>
-      // Update navigation bar dynamically
+      // Update navbar dynamically
       function updateNavbar() {
         const token = localStorage.getItem("token");
         const navbar = document.getElementById("navbar");
@@ -73,7 +71,6 @@
         const params = new URLSearchParams(window.location.search);
         return params.get(param);
       }
-
       const recipeId = getQueryParam("id");
       if (!recipeId) {
         document.getElementById("recipe-details").innerHTML = "<p>No recipe specified.</p>";
@@ -102,42 +99,130 @@
         }
       }
 
-      // Dummy like functionality
-      let likeCount = 0;
-      document.getElementById("likeBtn").addEventListener("click", () => {
-        likeCount++;
-        document.getElementById("likeCount").innerText = likeCount;
-      });
+      // Update the like button status
+      async function updateLikeButton() {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        try {
+          const res = await fetch(`/api/recipes/${recipeId}/like-status`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (!res.ok) {
+            console.error("Error fetching like status, status:", res.status);
+            return;
+          }
+          const data = await res.json();
+          const likeBtn = document.getElementById("likeBtn");
+          likeBtn.setAttribute("data-liked", data.likedByUser);
+          likeBtn.innerText = data.likedByUser
+            ? `Unlike (${data.likeCount})`
+            : `Like (${data.likeCount})`;
+        } catch (error) {
+          console.error("Error fetching like status:", error);
+        }
+      }
 
-      // Save to Favorites functionality
-      document.getElementById("favoriteBtn").addEventListener("click", async () => {
+      // Toggle like status on button click
+      document.getElementById("likeBtn").addEventListener("click", async () => {
         const token = localStorage.getItem("token");
         if (!token) {
-          alert("You must be logged in to add favorites.");
+          alert("You must be logged in to like a recipe.");
           return;
         }
         try {
-          const res = await fetch("/api/users/favorites", {
+          const res = await fetch(`/api/recipes/${recipeId}/like`, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify({ recipeId })
+            headers: { Authorization: `Bearer ${token}` }
           });
-          // Check if the response is JSON
           const data = await res.json();
           if (res.ok) {
-            alert("Recipe added to favorites!");
+            alert(data.message);
           } else {
             alert(data.message);
           }
         } catch (error) {
-          console.error("Error adding to favorites:", error);
+          console.error("Error toggling like:", error);
         }
+        await updateLikeButton();
       });
 
-      document.addEventListener("DOMContentLoaded", loadRecipe);
+      // (Favorite button code remains as before)
+      async function checkFavoriteStatus() {
+        const token = localStorage.getItem("token");
+        if (!token) return false;
+        try {
+          const res = await fetch("/api/users/favorites", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (!res.ok) return false;
+          const data = await res.json();
+          return data.favorites.some(fav => fav.id == recipeId);
+        } catch (error) {
+          console.error("Error checking favorite status:", error);
+          return false;
+        }
+      }
+
+      async function updateFavoriteButton() {
+        const favBtn = document.getElementById("favoriteBtn");
+        const isFav = await checkFavoriteStatus();
+        favBtn.setAttribute("data-fav", isFav);
+        favBtn.innerText = isFav ? "Remove from Favorites" : "Add to Favorites";
+      }
+
+      document.getElementById("favoriteBtn").addEventListener("click", async () => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          alert("You must be logged in to modify favorites.");
+          return;
+        }
+        const favBtn = document.getElementById("favoriteBtn");
+        const isFav = favBtn.getAttribute("data-fav") === "true";
+        if (isFav) {
+          // Remove from favorites
+          try {
+            const res = await fetch(`/api/users/favorites/${recipeId}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok) {
+              alert("Removed from favorites");
+            } else {
+              alert(data.message);
+            }
+          } catch (error) {
+            console.error("Error removing from favorites:", error);
+          }
+        } else {
+          // Add to favorites
+          try {
+            const res = await fetch("/api/users/favorites", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({ recipeId })
+            });
+            const data = await res.json();
+            if (res.ok) {
+              alert("Added to favorites");
+            } else {
+              alert(data.message);
+            }
+          } catch (error) {
+            console.error("Error adding to favorites:", error);
+          }
+        }
+        updateFavoriteButton();
+      });
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        await loadRecipe();
+        await updateFavoriteButton();
+        await updateLikeButton();
+      });
     </script>
   </body>
 </html>

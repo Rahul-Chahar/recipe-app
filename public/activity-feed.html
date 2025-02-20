@@ -1,55 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Activity Feed - RecipeShare</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-  </head>
-  <body class="bg-gray-100">
-    <!-- Navigation -->
-    <nav class="bg-white shadow mb-6">
-      <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-        <a href="profile.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
-        <div>
-          <a href="profile.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Profile</a>
-          <a href="login.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Logout</a>
-        </div>
-      </div>
-    </nav>
-
-    <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
-      <h2 class="text-2xl font-bold mb-4">Activity Feed</h2>
-      <div id="feed" class="space-y-4">
-        <!-- Feed items will be loaded here -->
-      </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Activity Feed - RecipeShare</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+</head>
+<body class="bg-gray-100">
+  <nav id="navbar" class="bg-white shadow mb-6 px-4 py-4"></nav>
+  <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
+    <h1 class="text-3xl font-bold mb-4">Activity Feed</h1>
+    <div id="feed" class="space-y-4">
+      <!-- Activity items will be loaded here -->
     </div>
+  </div>
 
-    <script>
-      const token = localStorage.getItem('token');
-      if (!token) window.location.href = 'login.html';
+  <script>
+    function updateNavbar() {
+      const token = localStorage.getItem("token");
+      const navbar = document.getElementById("navbar");
+      if (token) {
+        navbar.innerHTML = `
+          <div class="flex justify-between items-center w-full">
+            <a href="index.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
+            <div>
+              <a href="profile.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Profile</a>
+              <a href="users.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Users</a>
+              <a href="#" id="logoutBtn" class="px-4 py-2 text-gray-700 hover:text-gray-900">Logout</a>
+            </div>
+          </div>
+        `;
+        document.getElementById("logoutBtn").addEventListener("click", () => {
+          localStorage.removeItem("token");
+          window.location.href = "index.html";
+        });
+      } else {
+        navbar.innerHTML = `
+          <div class="flex justify-between items-center w-full">
+            <a href="index.html" class="text-xl font-bold text-gray-800">RecipeShare</a>
+            <div>
+              <a href="login.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Login</a>
+              <a href="register.html" class="px-4 py-2 text-gray-700 hover:text-gray-900">Register</a>
+            </div>
+          </div>
+        `;
+      }
+    }
+    document.addEventListener("DOMContentLoaded", updateNavbar);
 
-      async function loadFeed() {
-        try {
-          const res = await fetch('/api/users/feed', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          const data = await res.json();
-          const feedDiv = document.getElementById('feed');
-          feedDiv.innerHTML = '';
+    async function loadActivityFeed() {
+      const token = localStorage.getItem("token");
+      try {
+        const res = await fetch("/api/users/feed", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          console.error("Error fetching activity feed. Status:", res.status);
+          return;
+        }
+        const data = await res.json();
+        const feedDiv = document.getElementById("feed");
+        feedDiv.innerHTML = "";
+        if (data.feed && data.feed.length > 0) {
           data.feed.forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'border p-2 rounded';
-            div.innerHTML = `<p><strong>${item.user.username}</strong> ${item.message}</p>
-                             <span class="text-sm text-gray-500">${new Date(item.timestamp).toLocaleString()}</span>`;
+            const div = document.createElement("div");
+            div.className = "border p-4 rounded";
+            if (item.type === "recipe") {
+              div.innerHTML = `<strong>${item.user.username}</strong> posted a new recipe: 
+                <a href="recipe-details.html?id=${item.data.id}" class="text-blue-500 underline">${item.data.title}</a>
+                <br><small>${new Date(item.createdAt).toLocaleString()}</small>`;
+            } else if (item.type === "review") {
+              div.innerHTML = `<strong>${item.user.username}</strong> left a review.
+                <br><small>${new Date(item.createdAt).toLocaleString()}</small>`;
+            }
             feedDiv.appendChild(div);
           });
-        } catch (error) {
-          console.error('Error loading feed:', error);
+        } else {
+          feedDiv.innerHTML = "<p>No activity to display.</p>";
         }
+      } catch (error) {
+        console.error("Error loading activity feed:", error);
       }
-
-      document.addEventListener('DOMContentLoaded', loadFeed);
-    </script>
-  </body>
+    }
+    document.addEventListener("DOMContentLoaded", loadActivityFeed);
+  </script>
+</body>
 </html>

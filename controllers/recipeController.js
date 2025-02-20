@@ -91,3 +91,50 @@ exports.deleteRecipe = async (req, res, next) => {
     next(error);
   }
 };
+
+
+
+exports.toggleLike = async (req, res, next) => {
+  try {
+    const recipeId = req.params.recipeId;
+    const userId = req.user.id;
+    const recipe = await Recipe.findByPk(recipeId);
+    if (!recipe) {
+      return res.status(404).json({ message: "Recipe not found" });
+    }
+    // Check if current user already liked this recipe
+    const existingLike = await recipe.getLikedBy({ where: { id: userId } });
+    let message = "";
+    if (existingLike && existingLike.length > 0) {
+      // Remove the like
+      await recipe.removeLikedBy(userId);
+      message = "Recipe unliked";
+    } else {
+      // Add the like
+      await recipe.addLikedBy(userId);
+      message = "Recipe liked";
+    }
+    // Get updated like count
+    const likeCount = await recipe.countLikedBy();
+    return res.json({ message, likeCount });
+  } catch (error) {
+    console.error("Error in toggleLike:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+exports.getLikeStatus = async (req, res, next) => {
+  try {
+    const recipeId = req.params.recipeId;
+    const userId = req.user.id;
+    const recipe = await Recipe.findByPk(recipeId);
+    if (!recipe) return res.status(404).json({ message: "Recipe not found" });
+    const likeCount = await recipe.countLikedBy();
+    const existingLike = await recipe.getLikedBy({ where: { id: userId } });
+    const likedByUser = existingLike.length > 0;
+    res.json({ likeCount, likedByUser });
+  } catch (error) {
+    console.error("Error in getLikeStatus:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
