@@ -6,16 +6,16 @@ exports.register = async (req, res, next) => {
   try {
     const { username, email, password, firstName, lastName, adminCode } = req.body;
     
-    // Debug: log the received admin code and expected admin code
+    
     console.log("Received adminCode:", adminCode, "Expected:", process.env.ADMIN_CODE);
 
-    // Set default role to "user". If the provided adminCode (trimmed) matches the value in .env, set role to "admin"
+   
     let role = "user";
     if (adminCode && adminCode.trim() === process.env.ADMIN_CODE) {
       role = "admin";
     }
     
-    // Create the user (Sequelize will override the default value if role is provided)
+   
     const user = await User.create({ username, email, password, firstName, lastName, role });
     res.status(201).json({
       message: "User registered successfully",

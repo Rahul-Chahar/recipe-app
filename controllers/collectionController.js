@@ -16,7 +16,7 @@ exports.createCollection = async (req, res, next) => {
 
 exports.addRecipeToCollection = async (req, res, next) => {
   try {
-    // Implement adding a recipe to a collection (requires join table)
+    
     res.json({ message: "Recipe added to collection" });
   } catch (error) {
     next(error);
