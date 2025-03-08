@@ -30,16 +30,29 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/collections", collectionRoutes);
 app.use("/api/admin", adminRoutes);
 
-// Global error handling middleware (optional)
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(err.status || 500).json({ message: err.message || "Server Error" });
 });
 
 // Start server and connect to DB
-const PORT = process.env.PORT || 5000;
-sequelize.sync({ alter: true }).then(() => {
-  console.log("Database synchronized");
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-});
+// const PORT = process.env.PORT || 5000;
+// sequelize.sync({ alter: true }).then(() => {
+//   console.log("Database synchronized");
+//   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// });
 
+const Port  = process.env.PORT || 5000;
+const startSever = async () => {
+  try {
+    await sequelize.sync({alter: true});
+    console.log('Database synchronized');
+    app.listen (Port, () => console.log(`Server running on port ${Port}`));
+
+  
+} catch (error) {
+    console.error('Error starting server:', error);
+   process.exit(1);
+  }
+};
+startSever();

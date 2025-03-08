@@ -1,4 +1,3 @@
-// controllers/adminController.js
 const { User, Recipe } = require("../models");
 
 exports.getAllUsers = async (req, res, next) => {
