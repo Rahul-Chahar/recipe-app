@@ -53,6 +53,6 @@ const startSever = async () => {
 } catch (error) {
     console.error('Error starting server:', error);
    process.exit(1); // process.exit(1) means exit with failure
-  }
+  } // process.exit(0) means exit without failure
 };
 startSever();
