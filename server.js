@@ -56,3 +56,4 @@ const startSever = async () => {
   } // process.exit(0) means exit without failure
 };
 startSever();
+// Export app for testing
